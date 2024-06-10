@@ -1,0 +1,51 @@
+<?php
+
+  $testPassphrase = 'bit';
+
+  /*
+   * Hash from wallet.dat with passphrase: "bit"
+   * (Could be cracked by hashcat)
+   */
+  $passHash = '$bitcoin$64$12c098515dc4f4140786e352f05d3065f17a2ca8f15c5f1c93923dc7146380c6$16$146b99a74fa7b536$135174$2$00$2$00';
+  
+  /*
+   * Remove hash identifier (not needed)
+   */
+  $passHash = str_replace('$bitcoin$', '', $passHash);
+  
+  /*
+   * Split hash into pieces
+   * ([0] = ??, [1] = master key, [2] = salt len, [3] = salt, [4] = iteration count, [5] = salt position, [6] = ??, [7] == ??, [8] == ??)
+   */
+  $passHashArray = explode('$', $passHash);
+  
+  /*
+   * Combine passphrase and salt
+   */
+  $passToHash = $testPassphrase.hex2bin($passHashArray[3]);
+   
+   /*
+    * Hash $passToHash $passHasArray[4] times with SHA512
+    */
+   for($i = 0; $i < $passHashArray[4]; $i++){
+     $passToHash = hash('SHA512', $passToHash, true);
+   }
+   
+   /*
+    * Get Key and Iv from $passToHash for final encryption
+    */
+   $key = substr($passToHash, 0, 32);
+   $iv = substr($passToHash, 32, 16);
+   
+   /*
+    * final passphrase encryption
+    */
+   if(in_array('aes-256-cbc', openssl_get_cipher_methods())){
+     if(openssl_decrypt(hex2bin($passHashArray[1]), 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv)){
+       echo 'password correct';
+     }else{
+       echo 'decrypt failed';
+     }
+   }
+
+?>
